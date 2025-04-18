@@ -2,6 +2,7 @@
 import os
 import openai
 from dotenv import load_dotenv
+from openai import AuthenticationError, RateLimitError, APIConnectionError, OpenAIError
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -19,9 +20,21 @@ def get_gpt_advice(prompt):
             temperature=0.7,
         )
         return (response.choices[0].message.content.strip())
+    except AuthenticationError:
+        print("Error: Invalid API key. Please check your OpenAI API key in the .env file.")
+        return "Authentication error: Invalid API key."
+    except RateLimitError:
+        print("Error: Rate limit exceeded. Please wait and try again later.")
+        return "Rate limit error: Too many requests. Please try again later."
+    except APIConnectionError:
+        print("Error: Failed to connect to the OpenAI API. Please check your internet connection.")
+        return "Connection error: Unable to connect to OpenAI servers."
+    except OpenAIError as e:
+        print(f"An OpenAI-specific error occurred: {e}")
+        return f"OpenAI error: {e}"
     except Exception as e:
-        print(f"Error calling OpenAI API: {e}")
-        return None
+        print(f"An unexpected error occurred: {e}")
+        return "An unexpected error occurred. Please try again later."
 
 def analyze_budget(income, expenses):
     total_income = sum(item["amount"] for item in income)
