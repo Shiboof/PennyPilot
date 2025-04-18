@@ -40,3 +40,6 @@ instance/
 
 # Pillow cache
 *.egg-info/
+
+budget_data.json
+budget_data_backup.json

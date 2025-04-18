@@ -1,7 +1,7 @@
 # classes and functions
 import json
 from datetime import datetime
-import os
+import os # Assuming these are GUI functions
 
 # main CLI logic
 
@@ -123,40 +123,38 @@ class BudgetTracker:
 
     # save data to json file
     def save_data(self, filename="budget_data.json"):
-        # ask the user if they want to create a backup of the current data
-        create_backup = input("Do you want to create a backup of the current data? (y/n): ").strip().lower()
-        if create_backup == "y":
-            # check if budget_data.json exists, if it doesnt create it
-            self.create_backup
-            # save current data to budget_data.json
-        else:
-            print("No backup created")
-        # save current data to budget_data.json
-        data = {
-            "income": self.income,
-            "expenses": self.expenses
-        }
-        try:
-            with open(filename, "w") as file:
-                json.dump(data, file)
-            print(f"Data saved successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        except Exception as e:
-            print(e)
+        def proceed_with_save(create_backup):
+            if create_backup:
+                self.create_backup()
+            data = {
+                "income": self.income,
+                "expenses": self.expenses
+            }
+            try:
+                with open(filename, "w") as file:
+                    json.dump(data, file)
+                self.app.show_notification(f"Data saved successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            except Exception as e:
+                self.app.show_notification(f"Error saving data: {e}")
+
+        # Trigger the GUI pop-up to ask the user about creating a backup
+        self.app.ask_backup_confirmation(proceed_with_save)
 
     # load data from json file
     def load_data(self, filename="budget_data.json"):
         try:
+            print(f"Attempting to load data from {filename}...")
             with open(filename, "r") as file:
                 data = json.load(file)
                 self.income = data.get("income", [])
                 self.expenses = data.get("expenses", [])
-            print(f"Loaded {len(self.income)} income entries and {len(self.expenses)} expense entries")
+            self.app.show_notification(f"Loaded {len(self.income)} income entries and {len(self.expenses)} expense entries from {filename}")
         except FileNotFoundError:
-            print("No previous data found. Starting fresh.")
+            self.app.show_notification(f"No file found: {filename}. Starting fresh.")
         except json.JSONDecodeError:
-            print("Error decoding JSON data. Starting fresh.")
+            self.app.show_notification(f"Error decoding JSON data in {filename}. Starting fresh.")
         except Exception as e:
-            print(e)
+            self.app.show_notification(f"Error loading data: {e}")
 
     def create_backup(self, current_filename="budget_data.json", backup_filename="budget_data_backup.json"):
         if os.path.exists(backup_filename):

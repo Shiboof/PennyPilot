@@ -3,6 +3,7 @@ from tracker import BudgetTracker
 from gpt_advisor import analyze_budget, create_budget
 from PIL import Image
 import os
+import _tkinter
 
 # Start with a simple GUI using tkinter
 class App(ctk.CTk):
@@ -54,7 +55,7 @@ class App(ctk.CTk):
         self.save_button = ctk.CTkButton(self.button_frame, text="Save Data", command=lambda: self.save_data())
         self.save_button.grid(row=1, column=1, padx=10, pady=10)
         # Load Data button
-        self.load_button = ctk.CTkButton(self.button_frame, text="Load Data", command=lambda: self.load_data())
+        self.load_button = ctk.CTkButton(self.button_frame, text="Load Data", command=lambda: self.open_load_data_window())
         self.load_button.grid(row=2, column=0, padx=10, pady=10)
         # Get Forecast button
         self.forecast_button = ctk.CTkButton(self.button_frame, text="Forecast", command=lambda: self.open_forecast_window())
@@ -81,7 +82,6 @@ class App(ctk.CTk):
         income_window = ctk.CTkToplevel(self)
         income_window.title("Add Income")
         income_window.geometry("300x250")
-
         income_window.attributes("-topmost", True)
         income_window.lift()
         income_window.focus_force()
@@ -116,7 +116,6 @@ class App(ctk.CTk):
         expense_window = ctk.CTkToplevel(self)
         expense_window.title("Add Expense")
         expense_window.geometry("300x250")
-
         expense_window.attributes("-topmost", True)
         expense_window.lift()
         expense_window.focus_force()
@@ -151,7 +150,6 @@ class App(ctk.CTk):
         summary_window = ctk.CTkToplevel(self)
         summary_window.title("Budget Summary")
         summary_window.geometry("300x250")
-
         summary_window.attributes("-topmost", True)
         summary_window.lift()
         summary_window.focus_force()
@@ -165,26 +163,52 @@ class App(ctk.CTk):
         summary_label = ctk.CTkLabel(summary_window, text=summary_text)
         summary_label.pack(pady=20)
 
-    def save_data(self):
-        try:
-            self.tracker.save_data()
-            self.label.configure(text="Data saved successfully!")
-        except Exception as e:
-            self.label.configure(text=f"Error saving data: {e}")
+    def open_load_data_window(self):
+        load_window = ctk.CTkToplevel(self)
+        load_window.title("Load Data")
+        load_window.geometry("400x150")
+        load_window.attributes("-topmost", True)
+        load_window.lift()
 
-    def load_data(self):
-        try:
-            self.tracker.load_data()
-            self.label.configure(text="Data loaded successfully!")
-            self.update_logs()  # Update the logs after loading data
-        except Exception as e:
-            self.label.configure(text=f"Error loading data: {e}")
+        # Disable the close button
+        load_window.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        def load_main_file():
+            try:
+                print("Loading main file...")
+                self.tracker.load_data("budget_data.json")
+                self.update_logs()
+                try:
+                    if load_window.winfo_exists():  # Check if the window still exists
+                        self.after(100, load_window.destroy)  # Use after to ensure the window is destroyed after the current event loop
+                except Exception as e:
+                    print(f"Error destroying load_window: {e}")
+            except _tkinter.TclError as e:
+                print(f"TclError occurred: {e}")
+
+        def load_backup_file():
+            try:
+                print("Loading backup file...")
+                self.tracker.load_data("budget_data_backup.json")
+                self.update_logs()
+                try:
+                    if load_window.winfo_exists():  # Check if the window still exists
+                        self.after(100, load_window.destroy)  # Use after to ensure the window is destroyed after the current event loop
+                except Exception as e:
+                    print(f"Error destroying load_window: {e}")
+            except _tkinter.TclError as e:
+                print(f"TclError occurred: {e}")
+
+        main_file_button = ctk.CTkButton(load_window, text="Load Main File", command=load_main_file)
+        main_file_button.pack(side="left", padx=20, pady=10)
+
+        backup_file_button = ctk.CTkButton(load_window, text="Load Backup File", command=load_backup_file)
+        backup_file_button.pack(side="right", padx=20, pady=10)
 
     def open_forecast_window(self):
         forecast_window = ctk.CTkToplevel(self)
         forecast_window.title("Forecast")
         forecast_window.geometry("350x250")
-
         forecast_window.attributes("-topmost", True)
         forecast_window.lift()
         forecast_window.focus_force()
@@ -234,27 +258,25 @@ class App(ctk.CTk):
         clear_window = ctk.CTkToplevel(self)
         clear_window.title("Clear Data")
         clear_window.geometry("250x180")
-        
         clear_window.attributes("-topmost", True)
         clear_window.lift()
         clear_window.focus_force()
 
-        # Clear data options
-        label = ctk.CTkLabel(clear_window, text="Select data to clear:")
-        label.pack(pady=10)
+        # disable the close button 
+        clear_window.protocol("WM_DELETE_WINDOW", lambda: None)
 
         def clear_income():
             self.tracker.income.clear()
             self.label.configure(text="Income cleared!")
             self.update_logs()
             clear_window.destroy()
-        
+
         def clear_expenses():
             self.tracker.expenses.clear()
             self.label.configure(text="Expenses cleared!")
             self.update_logs()
             clear_window.destroy()
-        
+
         def clear_all():
             self.tracker.income.clear()
             self.tracker.expenses.clear()
@@ -278,6 +300,9 @@ class App(ctk.CTk):
             budget_window.attributes("-topmost", True)
             budget_window.lift()
             budget_window.focus_force()
+
+            # disable the close button 
+            budget_window.protocol("WM_DELETE_WINDOW", lambda: None)   
 
             # Display the budget in a label
             budget_label = ctk.CTkLabel(budget_window, text=budget, wraplength=360, justify="left")
@@ -314,11 +339,59 @@ class App(ctk.CTk):
         notification.lift()
         notification.focus_force()
 
+        # Disable the close button
+        notification.protocol("WM_DELETE_WINDOW", lambda: None)
+
         label = ctk.CTkLabel(notification, text=message, wraplength=200, justify="center")
         label.pack(pady=10)
 
-        ok_button = ctk.CTkButton(notification, text="OK", command=notification.destroy)
+        def close_window():
+            try:
+                if notification.winfo_exists():
+                    notification.destroy()
+            except _tkinter.TclError:
+                pass  # Ignore if the window is already destroyed
+
+        ok_button = ctk.CTkButton(notification, text="OK", command=close_window)
         ok_button.pack(pady=10)
+
+    def ask_backup_confirmation(self, callback):
+        # Create a pop-up window
+        confirmation_window = ctk.CTkToplevel(self)
+        confirmation_window.title("Create Backup?")
+        confirmation_window.geometry("400x150")
+        confirmation_window.attributes("-topmost", True)
+        confirmation_window.lift()
+        confirmation_window.focus_force()
+
+        # Disable the close button
+        confirmation_window.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Add a label to ask the question
+        label = ctk.CTkLabel(confirmation_window, text="Do you want to create a backup of the current data?")
+        label.pack(pady=20)
+
+        # Define button actions
+        def on_yes():
+            try:
+                callback(True)  # Proceed with backup
+                confirmation_window.destroy()
+            except _tkinter.TclError:
+                pass  # Ignore if the window is already destroyed
+
+        def on_no():
+            try:
+                callback(False)  # Skip backup
+                confirmation_window.destroy()
+            except _tkinter.TclError:
+                pass  # Ignore if the window is already destroyed
+
+        # Add Yes and No buttons
+        yes_button = ctk.CTkButton(confirmation_window, text="Yes", command=on_yes)
+        yes_button.pack(side="left", padx=20, pady=10)
+
+        no_button = ctk.CTkButton(confirmation_window, text="No", command=on_no)
+        no_button.pack(side="right", padx=20, pady=10)
 
 class Splashscreen(ctk.CTk):
     def __init__(self):
