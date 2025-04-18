@@ -1,0 +1,42 @@
+
+---
+
+### .gitignore
+
+```plaintext
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Python-specific files
+*.sqlite3
+*.pyc
+*.pyo
+
+# IDE-specific files
+.vscode/
+.idea/
+*.iml
+
+# Flask cache
+instance/
+*.db
+*.sqlite3
+
+# Pillow cache
+*.egg-info/
