@@ -52,7 +52,7 @@ class App(ctk.CTk):
         self.summary_button = ctk.CTkButton(self.button_frame, text="View Summary", command=lambda: self.open_summary_window())
         self.summary_button.grid(row=1, column=0, padx=10, pady=10)
         # Save Data button
-        self.save_button = ctk.CTkButton(self.button_frame, text="Save Data", command=lambda: self.save_data())
+        self.save_button = ctk.CTkButton(self.button_frame, text="Save Data", command=lambda: self.tracker.save_data())
         self.save_button.grid(row=1, column=1, padx=10, pady=10)
         # Load Data button
         self.load_button = ctk.CTkButton(self.button_frame, text="Load Data", command=lambda: self.open_load_data_window())
@@ -374,15 +374,17 @@ class App(ctk.CTk):
         # Define button actions
         def on_yes():
             try:
-                callback(True)  # Proceed with backup
                 confirmation_window.destroy()
+                callback(True)  # Proceed with backup
+
             except _tkinter.TclError:
                 pass  # Ignore if the window is already destroyed
 
         def on_no():
             try:
-                callback(False)  # Skip backup
                 confirmation_window.destroy()
+                callback(False)  # Skip backup
+
             except _tkinter.TclError:
                 pass  # Ignore if the window is already destroyed
 
