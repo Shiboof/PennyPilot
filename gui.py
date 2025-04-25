@@ -57,18 +57,22 @@ class App(ctk.CTk):
         # Load Data button
         self.load_button = ctk.CTkButton(self.button_frame, text="Load Data", command=lambda: self.open_load_data_window())
         self.load_button.grid(row=2, column=0, padx=10, pady=10)
-        # Get Forecast button
-        self.forecast_button = ctk.CTkButton(self.button_frame, text="Forecast", command=lambda: self.open_forecast_window())
-        self.forecast_button.grid(row=2, column=1, padx=10, pady=10)
+        # # Get Forecast button
+        # self.forecast_button = ctk.CTkButton(self.button_frame, text="Forecast", command=lambda: self.open_forecast_window())
+        # self.forecast_button.grid(row=2, column=1, padx=10, pady=10)
         # Get GPT Advice button
         self.gpt_button = ctk.CTkButton(self.button_frame, text="Get GPT Advice", command=lambda: self.open_gpt_window())
-        self.gpt_button.grid(row=3, column=0, padx=10, pady=10)
+        self.gpt_button.grid(row=2, column=1, padx=10, pady=10)
+        
         # Clear data button that lets the user choose, clear income, expenses or both
         self.clear_button = ctk.CTkButton(self.button_frame, text="Clear Data", command=lambda: self.open_clear_data_window())
-        self.clear_button.grid(row=3, column=1, padx=10, pady=10)
+        self.clear_button.grid(row=3, column=0, padx=10, pady=10)
         # Add Generate Budget button
         self.budget_button = ctk.CTkButton(self.button_frame, text="Generate Budget", command=lambda: self.open_budget_window())
-        self.budget_button.grid(row=4, column=0, padx=10, pady=10)
+        self.budget_button.grid(row=3, column=1, padx=10, pady=10)
+        # Upload Statement button '''not implemented yet'''
+        self.upload_button = ctk.CTkButton(self.button_frame, text="Upload Statement", command=lambda: self.tracker.upload_statement())
+        self.upload_button.grid(row=4, column=0, padx=10, pady=10)
         # Exit button
         self.exit_button = ctk.CTkButton(self.button_frame, text="Exit", command=self.destroy)
         self.exit_button.grid(row=4, column=1, columnspan=2, padx=10, pady=10)

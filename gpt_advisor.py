@@ -85,6 +85,14 @@ def create_budget(income, expenses):
     except Exception as e:
         print(f"Error creating budget: {e}")
         return "Could not generate a budget at this time."
+    
+def classify_transaction(description, amount):
+    prompt = (
+        f"Classify the following transactions as either 'income' or 'expense'. "
+        f"Respond with only one word: income or expense.\n\n"
+        f"Description: \"{description}\"\nAmount: {amount}"
+    )
+    return get_gpt_advice(prompt).lower()
 
 
 

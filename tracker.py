@@ -201,21 +201,21 @@ class BudgetTracker:
         except Exception as e:
             print(e)
     
-    def forecast_next_month_balance(self):
-        get_monthly_averages = self.get_monthly_averages()
-        if not get_monthly_averages:
-            print("No monthly averages found")
-            return
-        try:
-            monthly_income_averages, monthly_expenses_averages = get_monthly_averages
-            next_month_income = sum(monthly_income_averages.values()) / len(monthly_income_averages)
-            next_month_expenses = sum(monthly_expenses_averages.values()) / len(monthly_expenses_averages)
-            current_balance = self.view_balance() or 0
-            forecasted_balance = current_balance + (next_month_income - next_month_expenses)
-            print(f"Average monthly income: ${next_month_income:.2f}")
-            print(f"Average monthly expenses: ${next_month_expenses:.2f}")
-            print(f"Current balance: ${current_balance:.2f}")
-            print(f"Next month's forecasted balance: ${forecasted_balance:.2f}")
-            return forecasted_balance
-        except Exception as e:
-            print(e)
+    # def forecast_next_month_balance(self):
+    #     get_monthly_averages = self.get_monthly_averages()
+    #     if not get_monthly_averages:
+    #         print("No monthly averages found")
+    #         return
+    #     try:
+    #         monthly_income_averages, monthly_expenses_averages = get_monthly_averages
+    #         next_month_income = sum(monthly_income_averages.values()) / len(monthly_income_averages)
+    #         next_month_expenses = sum(monthly_expenses_averages.values()) / len(monthly_expenses_averages)
+    #         current_balance = self.view_balance() or 0
+    #         forecasted_balance = current_balance + (next_month_income - next_month_expenses)
+    #         print(f"Average monthly income: ${next_month_income:.2f}")
+    #         print(f"Average monthly expenses: ${next_month_expenses:.2f}")
+    #         print(f"Current balance: ${current_balance:.2f}")
+    #         print(f"Next month's forecasted balance: ${forecasted_balance:.2f}")
+    #         return forecasted_balance
+    #     except Exception as e:
+    #         print(e)
