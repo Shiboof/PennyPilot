@@ -43,3 +43,4 @@ instance/
 
 budget_data.json
 budget_data_backup.json
+.gitignore

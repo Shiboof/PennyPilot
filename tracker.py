@@ -148,13 +148,23 @@ class BudgetTracker:
                 data = json.load(file)
                 self.income = data.get("income", [])
                 self.expenses = data.get("expenses", [])
-            self.app.show_notification(f"Loaded {len(self.income)} income entries and {len(self.expenses)} expense entries from {filename}")
+            if self.app:
+                self.app.show_notification(f"Loaded {len(self.income)} income entries and {len(self.expenses)} expense entries from {filename}")
         except FileNotFoundError:
-            self.app.show_notification(f"No file found: {filename}. Starting fresh.")
+            if self.app:
+                self.app.show_notification(f"No file found: {filename}. Starting fresh.")
+            else:
+                print(f"No file found: {filename}. Starting fresh.")
         except json.JSONDecodeError:
-            self.app.show_notification(f"Error decoding JSON data in {filename}. Starting fresh.")
+            if self.app:
+                self.app.show_notification(f"Error decoding JSON data in {filename}. Starting fresh.")
+            else:
+                print(f"Error decoding JSON data in {filename}. Starting fresh.")
         except Exception as e:
-            self.app.show_notification(f"Error loading data: {e}")
+            if self.app:
+                self.app.show_notification(f"Error loading data: {e}")
+            else:
+                print(f"Error loading data: {e}")
 
     def create_backup(self, current_filename="budget_data.json", backup_filename="budget_data_backup.json"):
         if os.path.exists(backup_filename):
