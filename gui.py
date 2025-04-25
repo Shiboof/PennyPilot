@@ -1,9 +1,15 @@
 import customtkinter as ctk
+from customtkinter import *
 from tracker import BudgetTracker
-from gpt_advisor import analyze_budget, create_budget
+from gpt_advisor import analyze_budget, create_budget, async_categorize_transaction
 from PIL import Image
+import asyncio
 import os
 import _tkinter
+import csv
+import pandas as pd
+import fitz
+import re
 
 # Start with a simple GUI using tkinter
 class App(ctk.CTk):
@@ -70,8 +76,8 @@ class App(ctk.CTk):
         # Add Generate Budget button
         self.budget_button = ctk.CTkButton(self.button_frame, text="Generate Budget", command=lambda: self.open_budget_window())
         self.budget_button.grid(row=3, column=1, padx=10, pady=10)
-        # Upload Statement button '''not implemented yet'''
-        self.upload_button = ctk.CTkButton(self.button_frame, text="Upload Statement", command=lambda: self.tracker.upload_statement())
+        # Upload Statement button
+        self.upload_button = ctk.CTkButton(self.button_frame, text="Upload Statement", command=lambda: upload_bank_statement(self))
         self.upload_button.grid(row=4, column=0, padx=10, pady=10)
         # Exit button
         self.exit_button = ctk.CTkButton(self.button_frame, text="Exit", command=self.destroy)
@@ -88,7 +94,7 @@ class App(ctk.CTk):
         income_window.geometry("300x250")
         income_window.attributes("-topmost", True)
         income_window.lift()
-        income_window.focus_force()
+        income_window.focus()
 
         # Income entry fields
         amount_entry = ctk.CTkEntry(income_window, placeholder_text="Income Amount")
@@ -122,7 +128,7 @@ class App(ctk.CTk):
         expense_window.geometry("300x250")
         expense_window.attributes("-topmost", True)
         expense_window.lift()
-        expense_window.focus_force()
+        expense_window.focus()
 
         # Expense entry fields
         amount_entry = ctk.CTkEntry(expense_window, placeholder_text="Expense Amount")
@@ -156,7 +162,7 @@ class App(ctk.CTk):
         summary_window.geometry("300x250")
         summary_window.attributes("-topmost", True)
         summary_window.lift()
-        summary_window.focus_force()
+        summary_window.focus()
 
         #Summary display
         balance = self.tracker.view_balance() or 0.0
@@ -209,51 +215,31 @@ class App(ctk.CTk):
         backup_file_button = ctk.CTkButton(load_window, text="Load Backup File", command=load_backup_file)
         backup_file_button.pack(side="right", padx=20, pady=10)
 
-    def open_forecast_window(self):
-        forecast_window = ctk.CTkToplevel(self)
-        forecast_window.title("Forecast")
-        forecast_window.geometry("350x250")
-        forecast_window.attributes("-topmost", True)
-        forecast_window.lift()
-        forecast_window.focus_force()
-
-        #Forecast display
-        forecast = self.tracker.forecast_next_month_balance() or 0.0
-        balance = self.tracker.view_balance() or 0.0
-
-        averages = self.tracker.get_monthly_averages()
-        if averages:
-            monthly_income_averages, monthly_expenses_averages = averages
-            average_income = sum(monthly_income_averages.values()) / len(monthly_income_averages) if monthly_income_averages else 0.0
-            average_expenses = sum(monthly_expenses_averages.values()) / len(monthly_expenses_averages) if monthly_expenses_averages else 0.0
-        else:
-            average_income = 0.0
-            average_expenses = 0.0
-        forecast_text = (
-            f"Forecast Summary:\n\n"
-            f"Current balance: ${balance:.2f}\n"
-            f"Average monthly income: ${average_income:.2f}\n"
-            f"Average monthly expenses: ${average_expenses:.2f}\n"
-            f"Forecasted balance next month: ${forecast:.2f}"
-        )
-
-        # Display the forecast text in a label
-        forecast_label = ctk.CTkLabel(forecast_window, text=forecast_text)
-        forecast_label.pack(pady=20)
-
     def open_gpt_window(self):
         try:
             advice = analyze_budget(self.tracker.income, self.tracker.expenses)
 
             advice_window = ctk.CTkToplevel(self)
             advice_window.title("GPT Financial Advice")
-            advice_window.geometry("400x300")
+            advice_window.geometry("400x600")
             advice_window.attributes("-topmost", True)
             advice_window.lift()
-            advice_window.focus_force()
+            advice_window.focus()
 
-            advice_label = ctk.CTkLabel(advice_window, text=advice, wraplength=360, justify="left")
-            advice_label.pack(pady=20)
+            # Create a master container frame
+            main_frame = ctk.CTkFrame(advice_window)
+            main_frame.pack(fill="both", expand=True)
+
+            # Scrollable frame inside main_frame
+            scroll_frame = CTkScrollableFrame(main_frame, width=380, height=500)
+            scroll_frame.pack(padx=10, pady=(10, 0), fill="both", expand=True)
+
+            # Budget content
+            budget_label = ctk.CTkLabel(scroll_frame, text=advice, wraplength=340, justify="left")
+            budget_label.pack(pady=10)
+
+            # Close button outside scroll area, inside main_frame
+            ctk.CTkButton(main_frame, text="Close", command=advice_window.destroy).pack(pady=10)
         except Exception as e:
             self.label.configure(text=f"GPT Error: {e}")
 
@@ -264,7 +250,7 @@ class App(ctk.CTk):
         clear_window.geometry("250x180")
         clear_window.attributes("-topmost", True)
         clear_window.lift()
-        clear_window.focus_force()
+        clear_window.focus()
 
         # disable the close button 
         clear_window.protocol("WM_DELETE_WINDOW", lambda: None)
@@ -300,19 +286,29 @@ class App(ctk.CTk):
             # Create a new window to display the budget
             budget_window = ctk.CTkToplevel(self)
             budget_window.title("Generated Budget")
-            budget_window.geometry("400x400")
+            budget_window.geometry("400x600")
             budget_window.attributes("-topmost", True)
             budget_window.lift()
-            budget_window.focus_force()
+            budget_window.focus()
 
-            # disable the close button 
-            budget_window.protocol("WM_DELETE_WINDOW", lambda: None)   
+            # Create a master container frame
+            main_frame = ctk.CTkFrame(budget_window)
+            main_frame.pack(fill="both", expand=True)
 
-            # Display the budget in a label
-            budget_label = ctk.CTkLabel(budget_window, text=budget, wraplength=360, justify="left")
-            budget_label.pack(pady=20)
+            # Scrollable frame inside main_frame
+            scroll_frame = CTkScrollableFrame(main_frame, width=380, height=500)
+            scroll_frame.pack(padx=10, pady=(10, 0), fill="both", expand=True)
+
+            # Budget content
+            budget_label = ctk.CTkLabel(scroll_frame, text=budget, wraplength=340, justify="left")
+            budget_label.pack(pady=10)
+
+            # Close button outside scroll area, inside main_frame
+            ctk.CTkButton(main_frame, text="Close", command=budget_window.destroy).pack(pady=10)
+
         except Exception as e:
             self.label.configure(text=f"Error generating budget: {e}")
+
 
     def update_logs(self):
         # Clear both textboxes before updating
@@ -341,7 +337,7 @@ class App(ctk.CTk):
         notification.geometry("250x100")
         notification.attributes("-topmost", True)
         notification.lift()
-        notification.focus_force()
+        notification.focus()
 
         # Disable the close button
         notification.protocol("WM_DELETE_WINDOW", lambda: None)
@@ -398,6 +394,123 @@ class App(ctk.CTk):
 
         no_button = ctk.CTkButton(confirmation_window, text="No", command=on_no)
         no_button.pack(side="right", padx=20, pady=10)
+
+def upload_bank_statement(app):
+    file_path = filedialog.askopenfilename(filetypes=[("Supported files", "*.csv *.xlsx *.pdf")])
+    if not file_path:
+        return
+
+    try:
+        if file_path.endswith('.csv'):
+            process_csv(file_path, app)  # <-- missing app
+        elif file_path.endswith('.xlsx'):
+            process_excel(file_path, app)  # <-- missing app
+        elif file_path.endswith('.pdf'):
+            process_pdf(file_path, app)  # <-- missing app
+        else:
+            app.show_notification("Unsupported file format.")
+    except Exception as e:
+        app.show_notification(f"Error processing file: {e}")
+
+def process_csv(file_path, app):
+    with open(file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            handle_transaction_async(row.get('Description'), row.get('Amount'), app)
+
+def process_excel(file_path, app):
+    df = pd.read_excel(file_path)
+    for _, row in df.iterrows():
+        handle_transaction_async(row.get('Description'), row.get('Amount'), app)
+
+def process_pdf(file_path, app):
+    async def inner_async():
+        doc = fitz.open(file_path)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+
+        lines = text.splitlines()
+        print(f"Total lines: {len(lines)}")
+
+        tasks = []
+        temp_date = None
+        temp_description_lines = []
+
+        AMOUNT_REGEX = re.compile(r"^-?\$?\d[\d,]*\.\d{2}$")
+        DATE_REGEX = re.compile(r"^\d{2}/\d{2}/(\d{2}|\d{4})$")
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if DATE_REGEX.match(line):
+                temp_date = line
+                temp_description_lines = []
+
+            elif AMOUNT_REGEX.match(line):
+                if temp_date and temp_description_lines:
+                    description = " ".join(temp_description_lines)
+                    amount = clean_amount(line)
+                    if amount is not None:
+                        print(f"Queuing transaction: {temp_date} {description} - {amount}")
+                        tasks.append(handle_transaction_async(description, amount, temp_date, app))
+                else:
+                    print("Warning: amount found but no date/description set!")
+                temp_date = None
+                temp_description_lines = []
+
+            else:
+                temp_description_lines.append(line)
+
+        if tasks:
+            print(f"Awaiting {len(tasks)} transaction categorizations...")
+            try:
+                app.show_notification("Categorizing transactions, please wait...")
+                await asyncio.gather(*tasks)
+                # ✅ REFRESH THE UI HERE
+                app.tracker.save_data_quietly()  # Save the data after processing
+                app.update_logs()  # Update the logs in the UI
+                app.show_notification(f"{len(tasks)} transactions imported successfully.")
+            except Exception as e:
+                print(f"Error awaiting tasks: {e}")
+
+    asyncio.run(inner_async())
+
+def clean_amount(amount_text):
+    amount_text = amount_text.replace('$', '').replace(',', '')
+    try:
+        return float(amount_text)
+    except ValueError:
+        return None
+
+async def handle_transaction_async(description, amount, date, app):
+    if amount is None or not description or not date:
+        return
+
+    classification = "income" if amount > 0 else "expense"
+    try:
+        # Check if the description matches a known pattern for transactions
+        print(f"No local category found for '{description}', asking GPT asynchronously...")
+        category = await async_categorize_transaction(description)
+    except Exception as e:
+        print(f"Error categorizing transaction: {e}")
+        category = "other"
+
+    print(f"Transaction: {description}, Category: {category}")
+    app.tracker.add_transaction(description, amount, classification, date, category)
+
+def some_pattern_that_looks_like_a_transaction(line):
+    # Example quick check: contains a number
+    return any(char.isdigit() for char in line)
+
+def extract_description_and_amount(line):
+    # You would need to write smarter parsing depending on bank statement style
+    parts = line.split()
+    description = " ".join(parts[:-1])
+    amount = parts[-1]
+    return description, amount
 
 class Splashscreen(ctk.CTk):
     def __init__(self):

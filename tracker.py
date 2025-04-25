@@ -12,14 +12,14 @@ class BudgetTracker:
         self.expenses = []
     
     # Accepts amount and desc, and stores them in a list with the current date
-    def add_income(self, amount, source, date=None):
+    def add_income(self, amount, source, date=None, category=None):
         try:
             amount = float(amount)
         except ValueError:
             self.app.show_notification("Invalid amount. Please enter a number.")
             return
-        if amount < 0:
-            self.app.show_notification("Amount cannot be negative.")
+        if amount <= 0:
+            self.app.show_notification("Income must be a positive number.")
             return
 
         # Validate or default the date
@@ -32,19 +32,19 @@ class BudgetTracker:
                 return
 
         try:
-            self.income.append({"amount": amount, "date": date, "source": source})
-            self.app.show_notification(f"Income of ${amount:.2f} added on {date}.")
+            self.income.append({"amount": amount, "date": date, "source": source, "category": category})
+            print(f"Income of ${amount:.2f} added on {date}.")
         except Exception as e:
             self.app.show_notification(f"Error: {e}")
     
-    def add_expense(self, amount, category, date=None):
+    def add_expense(self, amount, category, date=None, expense_category=None):
         try:
             amount = float(amount)
         except ValueError:
             self.app.show_notification("Invalid amount. Please enter a number.")
             return
-        if amount < 0:
-            self.app.show_notification("Amount cannot be negative.")
+        if amount >= 0:
+            self.app.show_notification("Expense must be a negative number.")
             return
 
         # Validate or default the date
@@ -57,21 +57,29 @@ class BudgetTracker:
                 return
 
         try:
-            self.expenses.append({"amount": amount, "date": date, "category": category})
-            self.app.show_notification(f"Expense of ${amount:.2f} added on {date}.")
+            self.expenses.append({"amount": amount, "date": date, "category": category, "category": category})
+            print(f"Expense of ${amount:.2f} added on {date}.")
         except Exception as e:
             self.app.show_notification(f"Error: {e}")
 
+    def add_transaction(self, description, amount, classification=None, date=None, category=None):
+        if classification is None:
+            classification = "income" if amount > 0 else "expense"
+
+        if classification.lower() == "income":
+            self.add_income(amount, description, date, category)
+        elif classification.lower() == "expense":
+            self.add_expense(amount, description, date, category)
+        else:
+            self.app.show_notification(f"Unknown classification for transaction: {description}")
+
     def parse_date(self, date_str):
-        """Attempt to parse the date string with multiple formats and return it in YYYY-MM-DD format."""
-        formats = ["%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y", "%d-%m-%Y"]
-        for fmt in formats:
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
             try:
-                parsed_date = datetime.strptime(date_str, fmt)
-                return parsed_date.strftime("%Y-%m-%d")  # Reformat to YYYY-MM-DD
+                return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
             except ValueError:
                 continue
-        return None  # Return None if no format matches
+        return None
 
     # view total income
     def view_income(self):
@@ -140,6 +148,18 @@ class BudgetTracker:
         # Trigger the GUI pop-up to ask the user about creating a backup
         self.app.ask_backup_confirmation(proceed_with_save)
 
+    def save_data_quietly(self, filename="budget_data.json"):
+        data = {
+            "income": self.income,
+            "expenses": self.expenses
+        }
+        try:
+            with open(filename, "w") as file:
+                json.dump(data, file)
+            print(f"Data saved quietly at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception as e:
+            print(f"Error saving data quietly: {e}")
+
     # load data from json file
     def load_data(self, filename="budget_data.json"):
         try:
@@ -200,22 +220,3 @@ class BudgetTracker:
             return monthly_income_averages, monthly_expenses_averages
         except Exception as e:
             print(e)
-    
-    # def forecast_next_month_balance(self):
-    #     get_monthly_averages = self.get_monthly_averages()
-    #     if not get_monthly_averages:
-    #         print("No monthly averages found")
-    #         return
-    #     try:
-    #         monthly_income_averages, monthly_expenses_averages = get_monthly_averages
-    #         next_month_income = sum(monthly_income_averages.values()) / len(monthly_income_averages)
-    #         next_month_expenses = sum(monthly_expenses_averages.values()) / len(monthly_expenses_averages)
-    #         current_balance = self.view_balance() or 0
-    #         forecasted_balance = current_balance + (next_month_income - next_month_expenses)
-    #         print(f"Average monthly income: ${next_month_income:.2f}")
-    #         print(f"Average monthly expenses: ${next_month_expenses:.2f}")
-    #         print(f"Current balance: ${current_balance:.2f}")
-    #         print(f"Next month's forecasted balance: ${forecasted_balance:.2f}")
-    #         return forecasted_balance
-    #     except Exception as e:
-    #         print(e)
