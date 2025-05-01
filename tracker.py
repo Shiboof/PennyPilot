@@ -1,222 +1,191 @@
-# classes and functions
 import json
 from datetime import datetime
-import os # Assuming these are GUI functions
+import os
 
-# main CLI logic
 
 class BudgetTracker:
-    def __init__(self, app):
+    def __init__(self, app=None):
         self.app = app
         self.income = []
         self.expenses = []
-    
-    # Accepts amount and desc, and stores them in a list with the current date
+
+    # ─── INCOME & EXPENSE HANDLERS ─────────────────────────────────────────────
+
     def add_income(self, amount, source, date=None, category=None):
-        try:
-            amount = float(amount)
-        except ValueError:
-            self.app.show_notification("Invalid amount. Please enter a number.")
-            return
-        if amount <= 0:
-            self.app.show_notification("Income must be a positive number.")
-            return
+        amount = self._validate_amount(amount, must_be_positive=True)
+        if amount is None: return
 
-        # Validate or default the date
-        if not date:
-            date = datetime.now().strftime("%Y-%m-%d")  # Default to today's date
-        else:
-            date = self.parse_date(date)  # Use the new parse_date method
-            if not date:
-                self.app.show_notification("Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY.")
-                return
+        date = self._validate_date(date)
+        if not date: return
 
-        try:
-            self.income.append({"amount": amount, "date": date, "source": source, "category": category})
-            print(f"Income of ${amount:.2f} added on {date}.")
-        except Exception as e:
-            self.app.show_notification(f"Error: {e}")
-    
+        self.income.append({
+            "amount": amount,
+            "date": date,
+            "source": source,
+            "category": category or "general"
+        })
+
     def add_expense(self, amount, category, date=None, expense_category=None):
-        try:
-            amount = float(amount)
-        except ValueError:
-            self.app.show_notification("Invalid amount. Please enter a number.")
-            return
-        if amount >= 0:
-            self.app.show_notification("Expense must be a negative number.")
-            return
+        amount = self._validate_amount(amount, must_be_negative=True)
+        if amount is None: return
 
-        # Validate or default the date
-        if not date:
-            date = datetime.now().strftime("%Y-%m-%d")  # Default to today's date
-        else:
-            date = self.parse_date(date)  # Use the new parse_date method
-            if not date:
-                self.app.show_notification("Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY.")
-                return
+        date = self._validate_date(date)
+        if not date: return
 
-        try:
-            self.expenses.append({"amount": amount, "date": date, "category": category, "category": category})
-            print(f"Expense of ${amount:.2f} added on {date}.")
-        except Exception as e:
-            self.app.show_notification(f"Error: {e}")
+        self.expenses.append({
+            "amount": amount,
+            "date": date,
+            "category": category or "misc"
+        })
 
     def add_transaction(self, description, amount, classification=None, date=None, category=None):
-        if classification is None:
-            classification = "income" if amount > 0 else "expense"
+        classification = classification or ("income" if float(amount) > 0 else "expense")
 
         if classification.lower() == "income":
             self.add_income(amount, description, date, category)
         elif classification.lower() == "expense":
             self.add_expense(amount, description, date, category)
         else:
-            self.app.show_notification(f"Unknown classification for transaction: {description}")
+            self._notify(f"Unknown classification: {classification}")
 
-    def parse_date(self, date_str):
+    # ─── VALIDATION UTILITIES ──────────────────────────────────────────────────
+
+    def _validate_amount(self, amount, must_be_positive=False, must_be_negative=False):
+        try:
+            amt = float(amount)
+            if must_be_positive and amt <= 0:
+                self._notify("Income must be a positive number.")
+                return None
+            if must_be_negative and amt >= 0:
+                self._notify("Expense must be a negative number.")
+                return None
+            return amt
+        except ValueError:
+            self._notify("Invalid amount. Please enter a valid number.")
+            return None
+
+    def _validate_date(self, date_str):
+        if not date_str:
+            return datetime.now().strftime("%Y-%m-%d")
         for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
             try:
                 return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
             except ValueError:
                 continue
+        self._notify("Invalid date format. Use YYYY-MM-DD or MM/DD/YYYY.")
         return None
 
-    # view total income
-    def view_income(self):
-        if not self.income:
-            print("No income entries found")
-            return 0.0
+    def _notify(self, message):
+        if self.app and hasattr(self.app, "show_notification"):
+            self.app.show_notification(message)
         else:
-            try:
-                total_income = sum(item["amount"] for item in self.income)
-                print(total_income)
-                return total_income
-            except Exception as e:
-                print(e)
-                return 0.0
+            print(message)
 
-    # view total expenses
-    def view_expense(self):
-        if not self.expenses:
-            print("No income entries found")
-            return 0.0
-        else:
-            try:
-                total_expenses = sum(item["amount"] for item in self.expenses)
-                print("Total expenses: ${:.2f}".format(total_expenses))
-                return total_expenses
-            except Exception as e:
-                print(e)
-                return 0.0
+    # ─── FILE OPERATIONS ───────────────────────────────────────────────────────
 
-    # get balance
-    def view_balance(self):
-
-        if not self.income and not self.expenses:
-            print("No entries found, balances set to 0")
-            total_income = 0
-            total_expenses = 0
-            balance = total_income - total_expenses
-            return balance
-        
-        try:
-            total_income = self.view_income()
-            total_expenses = self.view_expense()
-            balance = total_income - total_expenses
-            print(f"Your balance is: ${balance:.2f}")
-            return balance
-        except Exception as e:
-            print(e)
-            return 0.0
-
-    # save data to json file
     def save_data(self, filename="budget_data.json"):
-        def proceed_with_save(create_backup):
+        def do_save(create_backup):
             if create_backup:
                 self.create_backup()
-            data = {
+            self._write_json(filename, {
                 "income": self.income,
                 "expenses": self.expenses
-            }
-            try:
-                with open(filename, "w") as file:
-                    json.dump(data, file)
-                self.app.show_notification(f"Data saved successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            except Exception as e:
-                self.app.show_notification(f"Error saving data: {e}")
+            })
+            self._notify("Data saved successfully.")
 
-        # Trigger the GUI pop-up to ask the user about creating a backup
-        self.app.ask_backup_confirmation(proceed_with_save)
+        if self.app and hasattr(self.app, "ask_backup_confirmation"):
+            self.app.ask_backup_confirmation(do_save)
+        else:
+            do_save(create_backup=False)
 
     def save_data_quietly(self, filename="budget_data.json"):
-        data = {
+        self._write_json(filename, {
             "income": self.income,
             "expenses": self.expenses
-        }
-        try:
-            with open(filename, "w") as file:
-                json.dump(data, file)
-            print(f"Data saved quietly at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        except Exception as e:
-            print(f"Error saving data quietly: {e}")
+        })
 
-    # load data from json file
+    def _write_json(self, path, data):
+        try:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            self._notify(f"Error saving data: {e}")
+
     def load_data(self, filename="budget_data.json"):
         try:
-            print(f"Attempting to load data from {filename}...")
-            with open(filename, "r") as file:
-                data = json.load(file)
-                self.income = data.get("income", [])
-                self.expenses = data.get("expenses", [])
-            if self.app:
-                self.app.show_notification(f"Loaded {len(self.income)} income entries and {len(self.expenses)} expense entries from {filename}")
+            with open(filename, "r") as f:
+                data = json.load(f)
+            self.income = data.get("income", [])
+            self.expenses = data.get("expenses", [])
+            self._notify(f"Loaded {len(self.income)} income and {len(self.expenses)} expenses.")
         except FileNotFoundError:
-            if self.app:
-                self.app.show_notification(f"No file found: {filename}. Starting fresh.")
-            else:
-                print(f"No file found: {filename}. Starting fresh.")
+            self._notify(f"File not found: {filename}")
         except json.JSONDecodeError:
-            if self.app:
-                self.app.show_notification(f"Error decoding JSON data in {filename}. Starting fresh.")
-            else:
-                print(f"Error decoding JSON data in {filename}. Starting fresh.")
+            self._notify(f"Error decoding JSON in {filename}")
         except Exception as e:
-            if self.app:
-                self.app.show_notification(f"Error loading data: {e}")
-            else:
-                print(f"Error loading data: {e}")
+            self._notify(f"Error loading data: {e}")
 
-    def create_backup(self, current_filename="budget_data.json", backup_filename="budget_data_backup.json"):
-        if os.path.exists(backup_filename):
+    def create_backup(self, current="budget_data.json", backup="budget_data_backup.json"):
+        if os.path.exists(backup):
             try:
-                os.remove(backup_filename)
-                print("Previous backup deleted successfully")
+                os.remove(backup)
             except Exception as e:
-                print(f"Error deleting backup: {e}")
-        if os.path.exists(current_filename):
+                self._notify(f"Could not remove old backup: {e}")
+        if os.path.exists(current):
             try:
-                os.rename(current_filename, backup_filename)
-                print("Backup created successfully")
+                os.rename(current, backup)
             except Exception as e:
-                print(f"Error creating backup: {e}")
+                self._notify(f"Error creating backup: {e}")
+
+    def load_transactions(self, filename="budget_data.json"):
+        try:
+            with open(filename, "r") as f:
+                data = json.load(f)
+            transactions = []
+
+            for i in data.get("income", []):
+                transactions.append({
+                    "date": i["date"],
+                    "description": i.get("source", "income"),
+                    "amount": i["amount"],
+                    "category": i.get("category", "income"),
+                    "classification": "income"
+                })
+
+            for e in data.get("expenses", []):
+                transactions.append({
+                    "date": e["date"],
+                    "description": e.get("category", "expense"),
+                    "amount": e["amount"],
+                    "category": e.get("category", "expense"),
+                    "classification": "expense"
+                })
+            print(f"Loaded {len(transactions)} transactions.")
+            return transactions
+        except Exception as e:
+            self._notify(f"Error loading transactions: {e}")
+            return []
+
+    # ─── METRICS ───────────────────────────────────────────────────────────────
+
+    def view_income(self):
+        return sum(item["amount"] for item in self.income)
+
+    def view_expense(self):
+        return sum(item["amount"] for item in self.expenses)
+
+    def view_balance(self):
+        return self.view_income() - self.view_expense()
 
     def get_monthly_averages(self):
-        if not self.income and not self.expenses:
-            print("No entries found")
-            return
-        try:
-            income_by_month = {}
-            expenses_by_month = {}
-            for item in self.income:
-                month = item["date"][:7]  # YYYY-MM format
-                income_by_month.setdefault(month, []).append(item["amount"])
-            for item in self.expenses:
-                month = item["date"][:7]  # YYYY-MM format
-                expenses_by_month.setdefault(month, []).append(item["amount"])
-            monthly_income_averages = {month: sum(amounts) / len(amounts) for month, amounts in income_by_month.items()}
-            monthly_expenses_averages = {month: sum(amounts) / len(amounts) for month, amounts in expenses_by_month.items()}
-            print("Monthly Income Averages:", monthly_income_averages)
-            print("Monthly Expenses Averages:", monthly_expenses_averages)
-            return monthly_income_averages, monthly_expenses_averages
-        except Exception as e:
-            print(e)
+        def aggregate_by_month(entries):
+            result = {}
+            for entry in entries:
+                month = entry["date"][:7]  # YYYY-MM
+                result.setdefault(month, []).append(entry["amount"])
+            return {month: sum(v) / len(v) for month, v in result.items()}
+
+        return {
+            "income_avg": aggregate_by_month(self.income),
+            "expense_avg": aggregate_by_month(self.expenses)
+        }
