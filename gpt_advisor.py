@@ -43,18 +43,18 @@ def analyze_budget(income, expenses):
 
     # Prepare the prompt for GPT
     prompt = f"""
-    You are a professional financial advisor reviewing a user's budget.
+    You are a certified financial advisor evaluating a user's monthly budget.
 
-    Here is the data:
+    User's Financial Data:
     - Total Monthly Income: ${total_income:.2f}
     - Total Monthly Expenses: ${total_expenses:.2f}
 
-    Please provide a structured analysis with the following format:
-    1. 📊 Summary of the current financial state (e.g., surplus or deficit)
-    2. 💡 Three actionable suggestions to improve budgeting or reduce expenses
-    3. 📈 Optional tips on building long-term financial health
+    Instructions:
+    1. Analyze whether the user has a surplus or deficit, and state how much.
+    2. Suggest three clear, actionable strategies to reduce expenses or manage spending more effectively.
+    3. Optionally provide high-level tips for building long-term financial health (e.g., emergency funds, debt payoff strategies).
 
-    Keep it concise and practical.
+    Format the response using section titles and bullet points where helpful. Use an informative yet friendly tone.
     """
     
     # Get advice from GPT
@@ -71,20 +71,30 @@ def create_budget(income, expenses):
 
     # Prepare the prompt for GPT
     prompt = f"""
-    You are a financial advisor. Based on the following financial snapshot, generate a detailed monthly budget.
+    You are a financial advisor helping a user structure a smart, sustainable monthly budget.
 
-    User Profile:
+    User's Current Situation:
     - Total Monthly Income: ${total_income:.2f}
     - Total Monthly Expenses: ${abs(total_expenses):.2f}
 
-    Required Output:
-    - 📥 Recommended Savings Target (in $)
-    - 🏠 Essentials (e.g., rent, utilities, groceries) — include breakdowns
-    - 🍿 Discretionary Spending (e.g., entertainment, dining out) — include breakdowns
-    - 📘 Recommendations for better financial health or habit changes
+    Please generate a recommended monthly budget with the following format:
 
-    Respond in clear, structured sections with labels like:
-    [🏠 Essentials], [🍿 Discretionary], etc.
+    [📥 Recommended Savings Target]
+    - Suggest a savings amount based on income, ideally 15–20%, and explain why.
+
+    [🏠 Essentials]
+    - Break down essential expenses (e.g., rent, utilities, transportation, groceries).
+    - Provide realistic percentage allocations or dollar estimates.
+
+    [🍿 Discretionary Spending]
+    - Suggest discretionary categories (e.g., entertainment, dining out, subscriptions).
+    - Offer strategies to limit or manage this area responsibly.
+
+    [📘 Financial Recommendations]
+    - Give two or three tailored tips to strengthen the user's overall financial habits.
+    - Include suggestions like using budgeting apps, emergency funds, or automating savings.
+
+    Respond clearly and concisely with bullet points under each section.
     """
 
     # Get the budget from GPT
@@ -97,17 +107,18 @@ def create_budget(income, expenses):
     
 def categorize_transaction(description):
     prompt = f"""
-    You are a financial transaction categorizer.
+    You are a machine-learning-based financial transaction categorizer.
 
-    Rules:
-    - Pick the one best-matching category for the transaction below.
-    - Respond with only one lowercase category from this list:
+    Instructions:
+    - Match the transaction description to the most relevant category.
+    - Choose only one from this list (lowercase): 
     ["food", "groceries", "gas", "utilities", "entertainment", "salary", "shopping", "travel", "fees", "health", "gifts", "transfer", "education", "family", "other"]
+    - Output ONLY the matching category with no punctuation, quotes, or explanation.
 
-    Transaction Description:
+    Transaction description:
     "{description}"
 
-    Respond with only the category. No explanation. No punctuation. No full sentences.
+    Respond with a single word from the list.
     """
     result = get_gpt_advice(prompt).strip().lower()
     valid_categories = [
@@ -119,18 +130,19 @@ def categorize_transaction(description):
 
 async def async_categorize_transaction(description):
     prompt = f"""
-You are a financial transaction categorizer.
+    You are a machine-learning-based financial transaction categorizer.
 
-Rules:
-- Pick one best matching category for the following transaction.
-- Only respond with a one-word category like "food", "groceries", "gas", "utilities", "entertainment", "salary", "shopping", "travel", "fees", "health", or "other".
-- No full sentences.
+        Instructions:
+        - Match the transaction description to the most relevant category.
+        - Choose only one from this list (lowercase): 
+        ["food", "groceries", "gas", "utilities", "entertainment", "salary", "shopping", "travel", "fees", "health", "gifts", "transfer", "education", "family", "other"]
+        - Output ONLY the matching category with no punctuation, quotes, or explanation.
 
-Transaction description:
-"{description}"
+        Transaction description:
+        "{description}"
 
-Respond with only the one category word.
-"""
+        Respond with a single word from the list.
+        """
     try:
         result = get_gpt_advice(prompt).strip().lower()
         # If GPT returns weird stuff, fallback
